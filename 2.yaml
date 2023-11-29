@@ -1,0 +1,239 @@
+name: Setup Kernel Modules and Settings
+hosts: k8s-master
+become: true
+
+tasks:
+
+name: Disable Swap # отключаем swap
+command: swapoff -a
+become: true
+become_method: sudo
+become_user: root
+tags:
+
+swap
+name: Persist Swap Changes # отключаем swap из автозагрузки
+replace:
+path: /etc/fstab
+regexp: '^/dev/mapper/centos-swap\s'
+replace: '#/dev/mapper/centos-swap swap swap defaults 0 0'
+become: true
+become_method: sudo
+become_user: root
+tags:
+
+swap
+name: Install yum-utils # Устанавливаем yum-utils
+yum:
+name: yum-utils
+state: present
+
+name: Add Docker repository # Добовляем Docker репы
+yum_repository:
+name: docker-ce
+description: Docker CE Stable - $basearch
+baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+gpgcheck: true
+gpgkey: https://download.docker.com/linux/centos/gpg
+enabled: true
+
+name: Install containerd.io # Устанавливаем службу контейнеризации
+yum:
+name: containerd.io
+state: present
+
+name: Create containerd config directory # может и не нужна эта задача?
+file:
+path: /etc/containerd
+state: directory
+
+name: Add containerd config file
+command: containerd config default | sudo tee /etc/containerd/config.toml
+
+name: Reload System Settings # выполняем рестарт sudo sysctl --system
+command: sysctl --system
+become: true
+become_method: sudo
+become_user: root
+tags:
+
+kernel
+установка Кубера
+- name: copy  Kubernetes Repo
+  copy:
+    src: k8s-test/kubernetes.repo
+    dest: /etc/yum.repos.d/kubernetes.repo
+    owner: root
+    group: root
+
+- name: copy  resolv.conf
+  copy:
+    src: k8s-test/resolv.conf
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+
+- name: Install Kubernetes components
+  yum:
+    name: ['kubeadm', 'kubectl', 'kubelet', 'docker']
+    state: present
+
+
+
+
+
+
+
+- name: Load Additional Kernel Modules
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+    state: present
+    sysctl_set: yes
+  become: true
+  become_method: sudo
+  become_user: root
+  tags:
+    - kernel
+
+- name: Load br_netfilter Module
+  command: modprobe br_netfilter
+  become: true
+  become_method: sudo
+  become_user: root
+  tags:
+    - kernel
+
+- name: Apply System Settings
+  sysctl:
+    name: "{{ item }}"
+    value: "1"
+    state: present
+    sysctl_set: yes
+  with_items:
+    - net.ipv4.ip_forward
+    - net.ipv4.conf.all.rp_filter
+    - net.ipv4.conf.default.rp_filter
+    - net.bridge.bridge-nf-call-arptables
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.bridge.bridge-nf-call-iptables
+  become: true
+  become_method: sudo
+  become_user: root
+  tags:
+    - kernel
+
+
+
+
+- name: Replace disabled_plugins with enabled_plugins
+  replace:
+    path: /etc/containerd/config.toml
+    regexp: 'disabled_plugins = \["cri"\]'
+    replace: 'enabled_plugins = ["cri"]'
+
+
+
+- name: Add containerd CRI endpoint
+  blockinfile:
+    path: /etc/containerd/config.toml
+    block: |
+      # Simple config
+      [plugins."io.containerd.grpc.v1.cri".containerd]
+          endpoint = "unix:///var/run/containerd/containerd.sock"
+  register: config_line
+
+
+
+
+
+
+
+
+- name: Enable and start kubelet service
+  systemd:
+    name: kubelet
+    enabled: yes
+    state: started
+
+- name: Enable and start docker service
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Restart containerd service    # Перезаупскаем службу  containerd
+  systemd:
+    name: containerd
+    state: restarted
+    enabled: true
+
+
+
+
+- name: Replace disabled_plugins with enabled_plugins and add CRI endpoint
+  replace:
+    path: /etc/containerd/config.toml
+    regexp: 'disabled_plugins.*'
+    replace: 'enabled_plugins = ["io.containerd.grpc.v1.cri"]\n[plugins."io.containerd.grpc.v1.cri".containerd]'
+    after: '[plugins]'
+    
+  notify: Restart containerd
+  
+
+
+- name: Initialize Kubernetes cluster
+  command: kubeadm init --apiserver-advertise-address=192.168.56.103 --pod-network-cidr=10.244.0.0/16
+  register: kubeadm_output
+
+
+
+
+
+
+- name: Export KUBECONFIG
+  shell: echo "export KUBECONFIG=/etc/kubernetes/admin.conf" >> ~/.bashrc
+  args:
+    executable: /bin/bash
+  register: kubeconfig_export
+
+
+
+- name: Get Permission
+  become_user: ansible
+  shell: "{{ item }}"
+  with_items:
+    - mkdir -p $HOME/.kube
+    - sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    - sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
+- name: Install Flannel network plugin
+  become: false
+  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+
+- name: Generate join command
+  become_user: ansible
+  command: kubeadm token create --print-join-command
+  register: join_command
+
+- name: Copy join command to local file
+  local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+handlers:
+- name: Reload System Settings
+command: sysctl --system
+become: true
+become_method: sudo
+become_user: root
+tags:
+- kernel
+
+- name: Restart containerd
+  systemd:
+    name: containerd
+    state: restarted
+tags:
+- kernel
+- swap
