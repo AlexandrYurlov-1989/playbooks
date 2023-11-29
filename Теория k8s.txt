@@ -1,0 +1,271 @@
+Облачные функции - выполнения сервиса в облоке. типа оренодвал ресурсы в облоке и нагружаешь установленный сервисю
+ 
+оркестрация контейнеров микросервисной архитектуры - управления сервисами которые запихнули в контейнеры.
+ 
+ключевых.компонентов.облачно-ориентированной.экосистемы:.Prometheus,.Envoy,.Helm,.Fluentd,.gRPC.и.т..д
+ 
+ отлисе микросрвисного прилождиния от простого
+ 
+Микросервис.—.это.просто.самодоста-точный.сервис,.делающий.что-то.одно..Если.соединить.необходимое.количество.микросервисов,.получится.приложение
+ 
+Полезные команды
+изменить количество подов в диплойменте
+kubectl scale -n system-network deployment network-multitool --replicas=1
+ 
+Подключение консоли пода
+kubectl -n system-network exec --stdin --tty network-multitool-778d9444c8-7b2nz -- /bin/bash
+ 
+их делал в миникубе
+kubectl run hello --image=nginx --port=80
+kubectl get pod
+NAME    READY   STATUS                   RESTARTS   AGE
+hello       1/1         ImagePullBackOff   0                   5m52s
+ 
+kubectl describe pods hello -получить всю инфу по поду
+ 
+kubectl exec hello -it /bin/bash   - зайти на ПОД!
+minikube ssh - зайти на сервер миникуба
+ 
+kubectl logs [pod]    - ЛОГИ
+ 
+для доступа в интернет
+ kubectl get pods --show-labels показать метки
+kubectl label pods nginx app=nginx
+вешаем метку
+kubectl expose deployment nginx --port 80 --type NodePort
+kubectl describe services nginx
+Name:                     nginx
+Namespace:                default
+Labels:                   app=nginx
+Annotations:              <none>
+Selector:                 app=nginx
+Type:                     NodePort
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.109.71.28
+IPs:                      10.109.71.28
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  31842/TCP
+Endpoints:                10.244.1.8:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+ 
+в браузере вбиваем ip ноды и вот это порт
+ 
+kubectl edit service nginx   можно изменить ноде порт
+ 
+ 
+ 
+ 
+Перенаправить ПОРТ     
+7788 это любой порт моего компа а 80 порт пода
+kubectl port-forward hello 7788:80
+Forwarding from 127.0.0.1:7788 -> 80
+Forwarding from [::1]:7788 -> 80
+ 
+и уже на этом этапе с установленным nginx можно в браузере localhost:7788
+ 
+ 
+запуск пода через yaml
+создаем файл yaml
+редактируем где угодно
+вот минимум для пода 
+apiVersion : v1
+kind: Pod
+metadata:
+  name: my-web
+spec:
+  containers:
+    - name: container-nginx
+      image: nginx:latest
+ 
+и запускаем
+kubectl apply -f D:\pods\my_pod.yaml
+ 
+что-то поменяли в файле и делаем редеплоймент
+я добавил порт
+image: nginx:latest
+      ports:
+        - containerPort: 80
+kubectl delete -f D:\pods\my_pod.yaml
+сново kubectl apply -f D:\pods\my_pod.yaml
+и незабываем пробросить порт 
+kubectl port-forward my-web 7788:80
+ 
+LABLS
+обязательно добовляем labls
+apiVersion : v1
+kind: Pod
+metadata:
+  name: my-web
+  labels:
+    env: prod
+    app: main
+    tier: frontend
+    owner: Denis
+ 
+это будет выглядеть так:
+C:\Windows\system32>kubectl describe pods my-web
+Name:             my-web
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             minikube/192.168.59.100
+Start Time:       Thu, 07 Sep 2023 14:55:29 +0300
+Labels:           app=main
+                  env=prod
+                  owner=Denis
+                  tier=frontend
+ 
+если надо несколько контейнеров но так лучшк не дклать на одном поде
+  containers:
+    - name: container-nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+    - name: container-web
+      image: tomcat:8.5.38
+      ports:
+        - containerPort: 8080
+ 
+не забываем прокинуть порты
+ 
+ 
+деплоймент
+ 
+kubectl create deployment my-deploy --image nginx:latest
+kubectl get pods
+NAME                                            READY   STATUS    RESTARTS   AGE
+my-deploy-749d965d4b-z6gwg   1/1      Running      0                  3m5s
+ у деплоя будет длинное название но мы удаляем по короткому
+либо удаояем конкретный под, но тагда он переразвернется если у деплоя настроена реплика
+kubectl delete deployment my-deploy
+ 
+Скейлить
+ubectl scale deployment my-deploy --replicas 4
+ 
+посмотреть количество реплик 
+kubectl get rs
+NAME                   DESIRED   CURRENT   READY   AGE
+my-deploy-749d965d4b   4         4         4       6m39s
+kubectl delete pods my-deploy-749d965d4b-8rxfn
+если удалим под тутже создастса новый
+ 
+Автоскейлинг
+kubectl autoscale deployment my-deploy --min=4 --max=6 --cpu-pe
+rcent=80
+добавилось  horizontalpodautoscaler 
+kubectl get hpa
+NAME        REFERENCE                             TARGETS         MINPODS   MAXPODS   REP LICAS   AGE
+my-deploy   Deployment/my-deploy   <unknown>/80%   4                6                   4              2m31s
+ 
+kubectl rollout history deployment/my-deploy
+deployment.apps/my-deploy 
+REVISION  CHANGE-CAUSE
+1                <none>
+ 
+kubectl rollout status deployment/my-deploy
+deployment "my-deploy" successfully rolled out
+ 
+сейчас будем менять IMEGE
+сделаем дискрайбе диплоймента чтобы узнать как называется контейнер
+и потом меняем 
+kubectl set image deployment/my-deploy nginx=nginx/nginx:versionl --record
+                                                                      контейнер=имедж/имедж:версия
+ 
+запустим статус чтобы посмотреть как обнавляется
+kubectl rollout status deployment/my-deploy
+Waiting for deployment "my-deploy" rollout to finish: 2 out of 4 new replicas have been updated...
+ 
+посмотрим результат
+kubectl rollout history deployment/my-deploy
+deployment.apps/my-deploy 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deployment/my-deploy nginx=nginx/nginx:versionl --record=true
+ 
+как быстро вернуться на предыдущую версию
+ 
+kubectl rollout undo deployment/my-deploy
+deployment.apps/my-deploy rolled back
+ 
+посмотреим историю и увидим что вернулась не предыдущую 
+[node3 ~]$ kubectl rollout history deployment/my-deploy
+deployment.apps/my-deploy 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deployment/my-deploy nginx=nginx/nginx:versionl --record=true
+4         kubectl set image deployment/my-deploy nginx=nginx/nginx:version3 --record=true
+5         kubectl set image deployment/my-deploy nginx=nginx/nginx:version2 --record=true
+ 
+как прыгнуть на любую
+ 
+kubectl rollout undo deployment/my-deploy --to-revision=4
+ 
+ 
+как загружать  такой же имедж уже обновленный у вас
+ 
+kubectl rollout restart deployment/my-deploy
+будет как будто тоже latest но вы то его обновили там где он лежит
+ 
+Манифест для ДЕПЛОЯ
+ 
+ 
+Тейнты
+Чтобы посмотреть все тейнты на ноде, нужно выполнить команду:
+ kubectl describe node <имя_ноды> 
+Например, для ноды с именем "node-1" команда будет выглядеть так:
+kubectl describe node node-1 
+В выводе команды нужно найти раздел "Taints", где будут перечислены все тейнты на данной ноде.
+ 
+ 
+удалить тент
+Чтобы удалить тейнт с ноды, нужно выполнить следующую команду: 
+kubectl taint nodes <имя_ноды> <ключ_тейнта>-
+Например, если нода называется "node-1" и на ней есть тейнт с ключом "node-role.kubernetes.io/control-plane", то команда будет выглядеть так: 
+kubectl taint nodes k8s-master1-yurlov.local node-role.kubernetes.io/control-plane- 
+После этого нода станет доступной для запуска подов без соответствующих толерансов на этот тейнт.
+ 
+ 
+Бигут три пода с nginx получим к ним доступ
+kubectl create deployment yurlov-deploy --image nginx:latest
+kubectl scale deploy yurlov-deploy --replicas 3
+вот теперь бегу три пода)
+ 
+будем делать кластер Ip
+ubectl expose deploy yurlov-deploy --type=ClusterIP --port 80
+проверяем
+kubectl get services или kubectl get svc
+ 
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+kubernetes      ClusterIP   10.96.0.1      <none>        443/TCP   19m
+yurlov-deploy   ClusterIP   10.109.93.87   <none>        80/TCP    35s
+ 
+можно посмотреть отдачу странички
+curl -v 10.109.93.87 (-v это с подробным выводом)
+ 
+след способ
+kubectl expose deploy yurlov-deploy --type=NodePort --port 80
+ 
+ kubectl get svc
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+kubernetes      ClusterIP   10.96.0.1      <none>        443/TCP        10m
+yurlov-deploy   NodePort    10.101.82.35   <none>        80:31532/TCP   2m33s
+kubectl describe nodes | grep IP
+ 
+на любой воркер нодк проверим или с браузера 
+curl 192.168.0.22:31532
+либо кластерный ip 
+curl 10.101.82.35
+ 
+след способ 
+kubectl  expose deployment yurlov-deploy --type=LoadBalancer --port 80
+ 
+ kubectl get svc
+NAME            TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes      ClusterIP      10.96.0.1       <none>        443/TCP        131m
+yurlov-deploy   LoadBalancer   10.110.25.239   <pending>     80:32755/TCP   109m
+ 
+Теперь тоже но про манифесты
