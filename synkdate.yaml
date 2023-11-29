@@ -1,0 +1,27 @@
+name: Install and configure NTP on servers
+hosts: all
+become: true
+
+tasks:
+
+name: Install NTP package
+yum:
+name: ntpdate
+state: present
+
+name: Configure NTP server
+command: ntpdate pool.ntp.org
+ignore_errors: yes
+
+name: Restart NTP service
+service:
+name: ntpd
+state: restarted
+
+name: Verify NTP synchronization
+command: ntpq -p
+register: ntp_status
+
+name: Display NTP synchronization status
+debug:
+var: ntp_status.stdout_lines
