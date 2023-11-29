@@ -1,0 +1,97 @@
+Теория K8s от ярика
+k get node --show-labels      -какие есть метки на нодах
+
+с помощю меток мы напровляем поды на необходимые нам ноды
+
+
+
+nodeSelector:
+
+        kubernetes.io/hostname: worker1
+
+
+
+в yaml файле эта страка отправит под на конкретную ноду
+
+
+
+ k get pod -owide   можно посмотреть на какой ноде под и какой ip
+
+
+
+
+
+Пометить ноду ролью
+
+
+
+
+k label node worker1 node-role.kubernetes.io/nginx=true
+
+
+
+ k get nodes
+NAME      STATUS     ROLES           AGE   VERSION
+master    Ready      control-plane   44h   v1.28.2
+worker1   NotReady   nginx           42h   v1.28.2
+worker2   Ready      <none>          42h   v1.28.2
+
+
+
+теперь если мы в yaml файле пропишем
+
+nodeSelector:
+
+      node-role.kubernetes.io/nginx: "true"
+
+то при развороте она будет поподать на нужную ноду
+
+
+
+TEINT   зАРАЗА
+
+
+Заразим чтобы на ноде разворачивались только nginx
+
+Почти как с присвоением роли
+
+k taint node worker1 node-role.kubernetes.io/nginx:NoSchedule
+
+Увидеть tint можно только в describe
+
+Taints:             node-role.kubernetes.io/nginx:NoSchedule
+
+NoSchedule не будет расселять старые поды, просто не пустит новые
+
+Пулы нод-
+это ноды с одинаковой конфигурацией объединенной одной ролью и правом допуска до этих нод
+
+
+
+
+
+разворот ноды на барметал
+Скейлить воркеры
+
+
+
+
+AWX
+
+находим наш кластер
+
+заходим в группы воркерс
+
+и добаволяем новый хост
+
+находим нсценарий k8s-offline-scale-worker
+
+находим инфентори
+
+
+
+зайти в нетбокс поставить на сервер-ноду тег о пренадлежнотси ее к кластеру
+
+
+
+закордониnь запретить планирование ресурсов на ноде
