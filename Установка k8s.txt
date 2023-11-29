@@ -1,0 +1,166 @@
+﻿Установка K8S.sabydoc 26 нояРедактировать100%Установка K8S﻿это для облака 
+уменьшить или увеличить количество подов в сервисе
+kubectl scale -n ext-try-accounts deployment sbis-online-ah-00g --replicas=2
+
+
+
+systemctl enable --now chronyd.service
+
+chronyc activity
+
+
+Откройте файл ~/.bashrc в текстовом редакторе и добавьте строку:
+alias myalias='command'
+выполните команду source ~/.bashrc
+
+две ВМ  в virtusl-box
+с первым сетевым адаптером виртуальный и второй сетевой адаптер NAT с пробросом
+
+
+отключаем seelinux
+отключаем firewall
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl status firewalld
+это не безопасно
+ 
+vi /etc/selinux/config
+
+прописывем в etc/hosts 
+192.168.0.4 master 
+192.168.0.5 node-1 
+192.168.0.6 node-2
+
+
+4. Загружаем дополнительные модули ядра. (это где то в начале либо чуть позже)
+Также для K8S необходимо чтобы все пакеты проходящие через сетевые мосты обрабатывались через iptables. Для этого необходимо установить переменную ядра net.bridge.bridge-nf-call-iptables=1:
+
+cat << EOF > /etc/sysctl.d/k8s.conf 
+net.bridge.bridge-nf-call-iptables=1 
+EOF
+
+И загрузим его в ядро командой sudo modprobe br_netfilter
+И выполняем рестарт sudo sysctl --system
+
+свап тоже тут можно отключить
+
+Проверим что он есть командой swapon -s а затем отключим его swapoff -a
+И сделаем так чтобы при перезагрузке системы он опять не включился. В sudo vi /etc/fstab комментируем последнюю строку
+
+перезагружаем
+shutdown -r now
+
+на этом этапе проверяем что тачки друг друга пингуют
+и есть пинг на 8.8.8.8
+выключаем и делаем снапшот
+
+ Устанавливаем containerd
+
+sudo yum install -y yum-utils 
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo sudo yum install -y containerd.io 
+sudo mkdir -p /etc/containerd containerd config default | sudo tee /etc/containerd/config.toml
+
+Перезаупскаем службу
+sudo systemctl enable containerd 
+sudo systemctl start containerd 
+sudo systemctl status containerd
+
+
+ Настройка Kubernetes Repo
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+Установить Kubeadm и Dockeryum install kubeadm docker -y 
+
+После успешного завершения установки включите и запустите обе службы.
+# systemctl enable kubelet
+# systemctl start kubelet
+# systemctl enable docker
+# systemctl start docker
+
+Настройка master нодыПрежде всего необходимо инициализировать и установить master сервер:
+ $ sudo kubeadm init --apiserver-advertise-address=192.168.56.50 --pod-network-cidr=10.244.0.0/16
+
+mkdir -p $HOME/.kube 
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config 
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+Чтобы завершить настройку, необходимо установить CNI (Container Networking Interface) — в моем примере это flannel:
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml   
+
+kubadm token create --print-join-command
+kubeadm join 192.168.1.50:6443 --token kosibr.7iasskrhnbik7b4l --discovery-token-ca-cert-hash sha256:d943fe9795ccacee3bda55b2265cec6c7664be753cca657fed2ee7d73d550df2
+теперь выполняем на рабочей ноде и все готово
+
+
+
+Настройка рабочих узлов для присоединения к кластеру Kubernetes
+все тоже самое до ИНИТ
+тут только команда 
+kubeadm join 192.168.1.50:6443 --token kosibr.7iasskrhnbik7b4l --discovery-token-ca-cert-hash sha256:d943fe9795ccacee3bda55b2265cec6c7664be753cca657fed2ee7d73d550df2
+
+ Установка ВЕБ консоли yum insatll wget -y
+wget https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+Дальше нам необходимо чтобы была возможность подключаться с нашего компьютера к кластеру через браузер. Нам нужно настроить ресурс Service. Добавляем type: NodePort и указываем любой порт nodePort в диапазоне 30000-32767.
+https://habr.com/ru/articles/719466/
+После выполняем kubectl apply -f recommended.yaml В результате которого создаются все описанные в файле recommended.yaml ресурсы.
+
+Проверяем что создалась наша служба (Service) с типом NodePort: kubectl get svc -n kubernetes-dashboard
+
+Смотрим на какой ноде развернут наш pod для UI: kubectl get pods -o wide -n kubernetes-dashboard
+
+
+И применим его kubectl apply -f admin-user.yaml
+После создадим токен с помощью которого залогинимся в UI kubectl -n kubernetes-dashboard create token admin-user копируем его и заходим.
+kubectl -n kubernetes-dashboard create sa admin-use
+
+CRD для объектов HorizontalPodAutoscaler Например, для установки CRD для объектов HorizontalPodAutoscaler нужно выполнить команду:kubectl apply -f https://raw.githubusercontent.com/kubernetes/kubernetes/master/cluster/addons/autoscaler/hpa-horizontal-pod-autoscaler.yaml
+
+
+
+что это за ошиьки
+[root@worker1 ~]# kubeadm join 192.168.56.50:6443 --token 3435lr.w9srbmko8mtwnk2                                                                                                                                                             r \>         --discovery-token-ca-cert-hash sha256:2fce4cade51ef5157036beba8bd65864                                                                                                                                                             9b41cca6e0604e696c565719fda971b4[preflight] Running pre-flight checks[preflight] Reading configuration from the cluster...[preflight] FYI: You can look at this config file with 'kubectl -n kube-system g                                                                                                                                                             et cm kubeadm-config -o yaml'[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.y                                                                                                                                                             aml"[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/ku                                                                                                                                                             belet/kubeadm-flags.env"[kubelet-start] Starting the kubelet[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...[kubelet-check] Initial timeout of 40s passed.error execution phase kubelet-start: error uploading crisocket: Get "https://192                                                                                                                                                             .168.56.50:6443/api/v1/nodes/worker1?timeout=10s": net/http: request canceled wh                                                                                                                                                             ile waiting for connection (Client.Timeout exceeded while awaiting headers)To see the stack trace of this error execute with --v=5 or higher
+
+
+
+ОШИБКИ при повторной инициализации
+
+[preflight] Running pre-flight checkserror execution phase preflight: [preflight] Some fatal errors occurred:       
+ [ERROR FileContent--proc-sys-net-bridge-bridge-nf-call-iptables]: /proc/sys/net/bridge/bridge-nf-call-iptables contents are not set to 1       
+ [ERROR FileContent--proc-sys-net-ipv4-ip_forward]: /proc/sys/net/ipv4/ip_forward contents are not set to 1
+
+лечение: 
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+echo  1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+systemctl restart network
+echo 1 > /proc/sys/net/ipv4/ip_forward && echo  1 > /proc/sys/net/bridge/bridge-nf-call-iptables && systemctl restart network
+
+
+Для рестартаkubeadm reset -f
+rm -rf /etc/cni /etc/kubernetes /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/run/kubernetes ~/.kube/*
+
+ systemctl restart docker
+
+systemctl restart containerd
+
+
+
+для просмотра плагинов
+ctr plugins list
+
+
+
+И на будущее, чтобы долго не думать, пишем команду, которая удаляет все поды кластера в статусе Terminating:
+for p in $(kubectl get pods --all-namespaces | grep Terminating | awk '{print $2}'); do kubectl delete pod $p --grace-period=0 --force;done
+
+Убить не убиваемую ноду в Terminating
+kubectl delete pod fluentd-instance-zqfpz -n kube-system --force --grace-period=0
