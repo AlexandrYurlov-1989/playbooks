@@ -22,7 +22,7 @@ become_method: sudo
 become_user: root
 tags:
 
-swap
+
 name: Install yum-utils # Устанавливаем yum-utils
 yum:
 name: yum-utils
