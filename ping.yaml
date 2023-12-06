@@ -1,0 +1,14 @@
+---
+- name: check connection to remout host
+  hosts: nodes
+  tasks: 
+    - name: check connection
+      ping:
+
+    - name: Verify NTP synchronization
+      command: ntpq -p
+      register: ntp_status
+
+    - name: Display NTP synchronization status
+      debug:
+        var: ntp_status.stdout_lines
