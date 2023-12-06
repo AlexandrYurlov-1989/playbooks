@@ -1,0 +1,17 @@
+- name: Retrieve current date and server status # просто выведет дату хостов
+  hosts: nodes
+  gather_facts: true
+  tasks:
+    - name: Get current date
+      command: date
+      register: current_date
+
+    - name: Get server status
+      command: systemctl status
+      register: server_status
+
+    - name: Print results
+      debug:
+        msg:
+          - "Current date: {{ current_date.stdout }}"
+          # - "Server status: {{ server_status.stdout }}"
