@@ -1,0 +1,28 @@
+---
+- hosts: k8s-master
+  become: true
+  tasks:
+    - name: Reset kubeadm
+      command: kubeadm reset -f
+
+    - name: Remove directories and files
+      command: rm -rf /etc/cni /etc/kubernetes /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/run/kubernetes ~/.kube/*
+
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted
+
+    - name: Restart Containerd service
+      service:
+        name: containerd
+        state: restarted
+
+    - name: delet .kube
+      # become_user: ansible
+      shell: "{{ item }}"
+      with_items:
+        - rm -rf /root/.kube
+      
+        
+
