@@ -14,10 +14,10 @@ jobs:
 
     steps:
     - name: Checkout 
-      uses: AlexandrYurlov-1989/actions/checkout@v3
+      uses: actions/checkout@v3
 
     - name: Run Ansible playbook
-      uses: playbooks@main
+      uses: AlexandrYurlov-1989/playbooks@main
       with:
         playbook: ping.yaml # path to your Ansible playbook
         directory: ./
