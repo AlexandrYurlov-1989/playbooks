@@ -14,7 +14,7 @@ jobs:
 
     steps:
     - name: Checkout 
-      uses: ping/setup-node@v1
+      uses: playbooks/setup-node@v1
       with:
           node-version: 15
 
