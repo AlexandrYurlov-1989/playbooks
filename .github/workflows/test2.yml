@@ -1,0 +1,38 @@
+# Имя сценария
+name: Build frontend
+
+# Условия для выполнения: любые действия с пулл-реквестом
+on: [pull_request]
+
+# Список задач
+jobs:
+  build:
+    # Название задачи
+    name: Build frontend
+
+    # Выполнить на вирутальной машине с Ubuntu
+    runs-on: ubuntu-latest
+
+    # Список шагов
+    steps:
+      # Использовать код проекта из определенного коммита
+      # По умолчанию используется ветка, изменения которой вызвали выполнение сценария
+      - uses: actions/checkout@v2
+
+      # Настройка Node.js 15 для работы на виртуальной машине
+      - name: Use Node.js 15
+        uses: actions/setup-node@v1
+        with:
+          node-version: 15
+
+      # Установка node-пакетов проекта и сборка фронтенда
+      # Выполнятся описанные bash-команды
+      - name: Go to app dir, Install Node.js packages, Build static files
+        run: cd www && yarn && yarn build
+
+      # Попытка закоммитить обновления сборки фронтенда в ветку от имени бота github-actions (указываем его имя и почту с идентификатором официального бота от гитхаба)
+      - uses: EndBug/add-and-commit@v7
+        with:
+          author_name: github-actions
+          author_email: 41898282+github-actions[bot]@users.noreply.github.com
+          message: 'Build frontend'
