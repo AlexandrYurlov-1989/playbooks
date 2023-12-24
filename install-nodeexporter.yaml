@@ -1,7 +1,7 @@
 ---
 
 - name: Install and configure NTP on servers
-  hosts: nodes
+  hosts: k8s-worker
   become: true
 
   tasks:
