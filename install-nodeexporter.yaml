@@ -1,0 +1,35 @@
+---
+
+- name: Install and configure NTP on servers
+  hosts: nodes
+  become: true
+
+  tasks:
+    - name: Download Node Exporter
+      get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+        dest: /tmp/node_exporter.tar.gz
+
+    - name: Extract Node Exporter
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+        creates: /usr/local/bin/node_exporter-1.6.1.linux-amd64/
+
+    - name: Rename Node Exporter Directory
+      command: mv /usr/local/bin/node_exporter-1.6.1.linux-amd64/ /usr/local/bin/node_exporter/
+
+    - name: Create Node Exporter User
+      user:
+        name: nodeusr
+        shell: /bin/false
+        createhome: no
+
+    - name: Change Owner of Node Exporter Binary
+      file:
+        path: /usr/local/bin/node_exporter/node_exporter
+        owner: nodeusr
+        group: nodeusr
+
+        
