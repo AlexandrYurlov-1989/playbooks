@@ -1,0 +1,34 @@
+# добавить четырех пользователей через loop
+---
+- name: loops adduser
+  hosts: nodes
+  vars:
+    users:
+      - user1
+      - user2
+      - user3
+      - user4
+  tasks:
+    - name: Show five first prime numbers
+      debug: 
+        msg: "Добавлен {{ prime_number }}"
+      loop: "{{ users }}"
+      loop_control:
+        pause: 5    # Пауза на 5 секунд
+        loop_var: prime_number   # текущее значение переменной 
+
+      
+
+   
+      
+      
+
+
+
+# переопределить имя loop-переменной из item в user
+
+# назначить паузу в 5 сек между добавлениями пользователями
+
+# К каждому пользователю добавить коментарий " Ansible-generates user"
+
+# Учетные данные логин и пароль вынести во внешний файл, зашифровать через ansible-vault
