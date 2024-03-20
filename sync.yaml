@@ -6,7 +6,7 @@
 
   tasks:
     - name: Install NTP package
-      yum:
+      apt:
         name: ntpdate
         state: present
 
