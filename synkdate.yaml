@@ -1,27 +1,29 @@
-name: Install and configure NTP on servers
-hosts: all
-become: true
+---
+- name: Install and configure NTP on servers
+  hosts: nodes
+  become: true
 
-tasks:
+  tasks:
+    - name: Install NTP package
+      apt:
+        name: ntp
+        state: present
 
-name: Install NTP package
-yum:
-name: ntpdate
-state: present
+    - name: Configure NTP server
+      lineinfile:
+        path: /etc/ntp.conf
+        line: 'server time.nist.gov'
+        state: present
 
-name: Configure NTP server
-command: ntpdate pool.ntp.org
-ignore_errors: yes
+    - name: Restart NTP service
+      service:
+        name: ntp
+        state: restarted
 
-name: Restart NTP service
-service:
-name: ntpd
-state: restarted
+    - name: Verify NTP synchronization
+      command: ntpq -p
+      register: ntp_status
 
-name: Verify NTP synchronization
-command: ntpq -p
-register: ntp_status
-
-name: Display NTP synchronization status
-debug:
-var: ntp_status.stdout_lines
+    - name: Display NTP synchronization status
+      debug:
+         var: ntp_status.stdout_lines
