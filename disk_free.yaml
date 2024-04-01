@@ -1,0 +1,41 @@
+---
+
+- name: Expanding The Disk Space
+  hosts: master
+  become: true
+  
+
+  tasks:
+
+   - name: add   
+      command: pvs
+      register: pvs_status
+
+    
+    - name: add   
+        command: echo 1 > /sys/block/sda/device/rescan
+
+
+
+    - name: add   
+        command: pvresize /dev/sda3
+      
+    - name: add   
+        command: lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+        register: lvexten_status
+
+      
+    - name: add   
+        command: resize2fs /dev/ubuntu-vg/ubuntu-lv
+      
+      
+    - name: add   
+        command: df -h     
+        register: df_status
+      
+      
+      
+      
+    - name: Display status
+        debug:
+           var: df_status.stdout_lines
