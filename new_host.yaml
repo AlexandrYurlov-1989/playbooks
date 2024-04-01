@@ -1,0 +1,47 @@
+- name: resolv and netplane
+  hosts: master
+  become: true
+  tasks:
+
+    - name: Netplane
+      netplan:
+        addresses: 192.168.0.134/24
+        gateway: 192.168.0.1
+ 
+    - name: Resolv module
+      resolv:
+        dns_server: 192.168.0.101
+        prefex: yurlov.com
+        
+        
+    
+    - name: Set hostname
+        hostname:
+         name: {{ inventory_hostname }}
+
+          
+
+
+    - name: Install NTP package
+      apt:
+        name: ntp
+        state: present
+
+    - name: Configure NTP server
+      lineinfile:
+        path: /etc/ntp.conf
+        line: 'server time.nist.gov'
+        state: present
+
+    - name: Restart NTP service
+      service:
+        name: ntp
+        state: restarted
+
+    - name: Verify NTP synchronization
+      command: ntpq -p
+      register: ntp_status
+
+    - name: Display NTP synchronization status
+      debug:
+         var: ntp_status.stdout_lines
