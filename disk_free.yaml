@@ -7,29 +7,29 @@
 
   tasks:
 
-   - name: add   
+   - name: pvs   
       command: pvs
       register: pvs_status
 
     
-    - name: add   
+    - name: echo   
         command: echo 1 > /sys/block/sda/device/rescan
 
 
 
-    - name: add   
+    - name: pvresize   
         command: pvresize /dev/sda3
       
-    - name: add   
+    - name: lvextend   
         command: lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
         register: lvexten_status
 
       
-    - name: add   
+    - name: resize2fs   
         command: resize2fs /dev/ubuntu-vg/ubuntu-lv
       
       
-    - name: add   
+    - name: df   
         command: df -h     
         register: df_status
       
