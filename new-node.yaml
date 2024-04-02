@@ -4,6 +4,32 @@
   become: true
 
   tasks:
+  
+  
+  
+  
+  
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        
+        
+    - name: Install iptables-persistent package
+      apt:
+        name: iptables-persistent
+        state: present
+
+    - name: Add iptables rule for specific ports
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        match: multiport
+        multiport: "6443,2379:2380,10250:10252"
+        jump: ACCEPT
+
+    - name: Save iptables rules
+      command: netfilter-persistent save
+      
     - name: Disable Swap
       command: swapoff -a
       become: true
@@ -112,6 +138,10 @@
           - kubectl          
           - iptables-persistent
         state: present
+        
+        
+    - name: Hold kubelet, kubeadm, and kubectl packages
+          command: apt-mark hold kubelet kubeadm kubectl
 
     - name: copy daemon.json
       copy:
