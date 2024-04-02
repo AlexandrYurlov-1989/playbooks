@@ -1,6 +1,6 @@
 ---
 - name: Setup Kernel Modules and Settings
-  hosts: master
+  hosts: worker
   become: true
 
   tasks:
@@ -18,36 +18,21 @@
       apt:
         name: iptables-persistent
         state: present
+        
 
-    - name: Add iptables rule for specific ports
-      iptables:
-        chain: INPUT
-        protocol: tcp
-        match: multiport
-        multiport: "6443,2379:2380,10250:10252"
-        jump: ACCEPT
 
-    - name: Save iptables rules
-      command: netfilter-persistent save
       
     - name: Disable Swap
       command: swapoff -a
-      become: true
-      become_method: sudo
-      become_user: root
-      tags:
-        - swap
+
 
     - name: Persist Swap Changes
       replace:
-        path: /etc/fstab
-        regexp: '^/dev/mapper/centos-swap\s'
-        replace: '#/dev/mapper/centos-swap   swap                    swap    defaults        0 0'
-      become: true
-      become_method: sudo
-      become_user: root
-      tags:
-        - swap
+        path: /etc/fstab       
+        regexp: '^/swap.img\s'
+        replace: '#/swap.img      none    swap    sw      0       0'
+      
+ 
 
     - name: Install curl apt-transport-https git iptables-persistent
       apt:
@@ -141,7 +126,7 @@
         
         
     - name: Hold kubelet, kubeadm, and kubectl packages
-          command: apt-mark hold kubelet kubeadm kubectl
+      command: apt-mark hold kubelet kubeadm kubectl
 
     - name: copy daemon.json
       copy:
