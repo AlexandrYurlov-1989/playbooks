@@ -1,28 +1,43 @@
 ---
-- hosts: k8s-master
+- name: Restart Nodes
+  hosts: master
   become: true
+  gather_facts: false
+
   tasks:
-    - name: Reset kubeadm
-      command: kubeadm reset -f
-
-    - name: Remove directories and files
-      command: rm -rf /etc/cni /etc/kubernetes /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/run/kubernetes ~/.kube/*
-
-    - name: Restart Docker service
-      service:
-        name: docker
-        state: restarted
-
-    - name: Restart Containerd service
-      service:
-        name: containerd
-        state: restarted
-
-    - name: delet .kube
-      # become_user: ansible
-      shell: "{{ item }}"
-      with_items:
-        - rm -rf /root/.kube
+  
+  
+  
+      - name: Reset Kubernetes Cluster
+        command: kubeadm reset -f
+        ignore_errors: yes
+  
+      - name: Remove directories and files
+        command: rm -rf /etc/cni /etc/kubernetes /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/run/kubernetes ~/.kube/*
       
-        
+      - name: Restart Docker
+        systemd:
+          name: docker
+          state: restarted
+          
+      - name: Restart kubelet
+        service:
+          name: kubelet   
+          state: restarted          
+  
+      - name: Restart Containerd service
+        service:
+          name: containerd   
+          state: restarted
+          
+          
+          
+      - name: delet .kube
+     
+        shell: "{{ item }}"
+        with_items:
+          - rm -rf /root/.kube
+            
+#      - name: Initialize Kubernetes Cluster
+ #       command: kubeadm init --apiserver-advertise-address=192.168.0.134 --pod-network-cidr=10.244.0.0/16
 
