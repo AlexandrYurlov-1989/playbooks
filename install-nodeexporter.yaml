@@ -1,7 +1,7 @@
 ---
 
-- name: Install and configure NTP on servers
-  hosts: k8s-worker
+- name: Install and configure Node Exporter on servers
+  hosts: all
   become: true
 
   tasks:
