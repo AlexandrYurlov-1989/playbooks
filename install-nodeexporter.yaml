@@ -5,65 +5,59 @@
   become: true
 
   tasks:
-    - name: Download Node Exporter
+    - name: Download NodeExporter archive
       get_url:
-        url: https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
-        dest: /tmp/node_exporter.tar.gz
+        url: "https://github.com/prometheus/node_exporter/releases/download/v1.0.1/node_exporter-1.0.1.linux-amd64.tar.gz"
+        dest: "/tmp/node_exporter-1.0.1.linux-amd64.tar.gz"
 
-    - name: Extract Node Exporter
-      unarchive:
-        src: /tmp/node_exporter.tar.gz
-        dest: /usr/local/bin/
-        remote_src: yes
-        creates: /usr/local/bin/node_exporter-1.6.1.linux-amd64/
+    - name: Extract NodeExporter archive
+      ansible.builtin.command: "tar zxvf /tmp/node_exporter-1.0.1.linux-amd64.tar.gz"
+      args:
+        chdir: "/tmp"
 
-    - name: Rename Node Exporter Directory
-      command: mv /usr/local/bin/node_exporter-1.6.1.linux-amd64/ /usr/local/bin/node_exporter/
+    - name: Copy NodeExporter executable to /usr/local/bin/
+      ansible.builtin.command: "cp /tmp/node_exporter-1.0.1.linux-amd64/node_exporter /usr/local/bin/"
 
-    - name: Create Node Exporter User
-      user:
-        name: nodeusr
-        shell: /bin/false
-        createhome: no
+    - name: Create user nodeusr
+      ansible.builtin.user:
+        name: "nodeusr"
+        shell: "/bin/false"
+        system: yes
 
-    - name: Change Owner of Node Exporter Binary
-      file:
-        path: /usr/local/bin/node_exporter/node_exporter
-        owner: nodeusr
-        group: nodeusr
+    - name: Change ownership of NodeExporter executable
+      ansible.builtin.file:
+        path: "/usr/local/bin/node_exporter"
+        owner: "nodeusr"
+        group: "nodeusr"
 
-
-
-
-
-
-    - name: Creat file node_exporter.service
-      copy:
+    - name: Create systemd unit file
+      ansible.builtin.copy:
         content: |
           [Unit]
           Description=NodeExporter
 
           [Service]
           TimeoutStartSec=0
-          User=node_exporter
+          User=nodeusr
           ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
 
           [Install]
           WantedBy=multi-user.target
-        dest: /etc/systemd/system/node_exporter.service
+        dest: "/etc/systemd/system/node_exporter.service"
 
-    - name: refresh config systemd
-      systemd:
+    - name: Reload systemd configuration
+      ansible.builtin.systemd:
         daemon_reload: yes
 
-    - name: authozapusk NodeExporter
-      systemd:
+    - name: Enable and start NodeExporter service
+      ansible.builtin.systemd:
         name: node_exporter
         enabled: yes
-
-    - name: Start NodeExporter
-      systemd:
-        name: node_exporter
         state: started
+
+    - name: Check NodeExporter status
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: status
 
         
