@@ -1,7 +1,7 @@
 ---
 
 - name: Install and configure Node Exporter on servers
-  hosts: all
+  hosts: test
   become: true
 
   tasks:
