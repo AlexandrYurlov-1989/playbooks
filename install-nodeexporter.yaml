@@ -16,7 +16,10 @@
         chdir: "/tmp"
 
     - name: Copy NodeExporter executable to /usr/local/bin/
-      ansible.builtin.command: "cp /tmp/node_exporter-1.0.1.linux-amd64/node_exporter /usr/local/bin/"
+      ansible.builtin.copy:
+        src: "/tmp/node_exporter-1.0.1.linux-amd64/node_exporter"
+        dest: "/usr/local/bin/"
+        mode: "0755"
 
     - name: Create user nodeusr
       ansible.builtin.user:
