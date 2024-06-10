@@ -1,0 +1,25 @@
+- name: Execute
+  hosts: be 
+  gather_facts: False
+  become: yes
+
+  tasks:
+    - name: Get system inventory # Простая команда навывод имени хоста
+      command: hostname
+      register: hostname_output
+
+- name: Output
+  hosts: localhost
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: Write results to local output file
+      copy:
+        dest: "/home/aayurlov/sum.txt"
+        content: |
+          {% for host in groups.be %}
+          === {{ host }} ==      # разделилтель между именами
+
+          {{hostvars[host].hostname_output.stdout}}   # stdout вывод только вывода команды. там есть и другое если стереть stdout
+
+          {% endfor %}
